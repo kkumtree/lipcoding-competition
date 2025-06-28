@@ -46,7 +46,7 @@ if [ -f "requirements.txt" ]; then
 fi
 
 # 백엔드 서버 백그라운드 시작
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8080 > backend.log 2>&1 &
+nohup uvicorn app.main:app --host 127.0.0.1 --port 8080 > backend.log 2>&1 &
 BACKEND_PID=$!
 
 echo "백엔드 서버 시작됨 (PID: $BACKEND_PID)"

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 - 멘토-멘티 매칭</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            width: 250px;
+            height: calc(100vh - 60px);
+            background: white;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            padding: 1rem;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+        }
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin: 0.5rem 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .nav-item:hover, .nav-item.active {
+            background: #667eea;
+            color: white;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        button {
+            padding: 0.75rem 1.5rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        .mentor {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+        }
+        .search-box {
+            margin-bottom: 1rem;
+        }
+        .profile-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 1rem 0;
+        }
+        .logout-btn {
+            background: #dc3545;
+        }
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        .request-item {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+        }
+        .status-pending { border-left: 4px solid #ffc107; }
+        .status-accepted { border-left: 4px solid #28a745; }
+        .status-rejected { border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>멘토-멘티 매칭 플랫폼</h1>
+        <div>
+            <span id="user-name"></span>
+            <button class="logout-btn" onclick="logout()">로그아웃</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="nav-item active" onclick="showSection('profile')">프로필 관리</div>
+        <div class="nav-item" id="mentors-nav" onclick="showSection('mentors')">멘토 찾기</div>
+        <div class="nav-item" onclick="showSection('requests')">매칭 요청</div>
+    </div>
+
+    <div class="main-content">
+        <!-- 프로필 관리 섹션 -->
+        <div id="profile-section" class="content-section active">
+            <div class="card">
+                <h2>프로필 관리</h2>
+                <form onsubmit="updateProfile(event)">
+                    <div class="form-group">
+                        <label for="name">이름</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">자기소개</label>
+                        <textarea id="bio" name="bio" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="skillsets">스킬셋</label>
+                        <input type="text" id="skillsets" name="skillsets" placeholder="예: JavaScript, Python, React">
+                    </div>
+                    <div class="form-group">
+                        <label for="profile-photo">프로필 사진</label>
+                        <input type="file" id="profile-photo" accept="image/jpeg,image/jpg,image/png" onchange="uploadPhoto()">
+                        <img id="profile-image" class="profile-photo" style="display: none;">
+                    </div>
+                    <button type="submit" id="save">저장</button>
+                </form>
+                <div id="profile-message"></div>
+            </div>
+        </div>
+
+        <!-- 멘토 찾기 섹션 -->
+        <div id="mentors-section" class="content-section">
+            <div class="card">
+                <h2>멘토 찾기</h2>
+                <div class="search-box">
+                    <input type="text" id="search" placeholder="이름이나 스킬로 검색..." onkeyup="searchMentors()">
+                </div>
+                <div id="mentors-list"></div>
+            </div>
+        </div>
+
+        <!-- 매칭 요청 섹션 -->
+        <div id="requests-section" class="content-section">
+            <div class="card">
+                <h2>매칭 요청</h2>
+                <div id="requests-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 매칭 요청 모달 -->
+    <div id="request-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%;">
+            <h3>매칭 요청</h3>
+            <form onsubmit="sendMatchRequest(event)">
+                <input type="hidden" id="mentor-id" name="mentor_id">
+                <div class="form-group">
+                    <label for="message">메시지</label>
+                    <textarea id="message" name="message" rows="4" required placeholder="멘토에게 보낼 메시지를 작성해주세요."></textarea>
+                </div>
+                <button type="submit">요청 보내기</button>
+                <button type="button" onclick="closeModal()">취소</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        let currentUser = null;
+
+        // 페이지 로드 시 인증 확인 및 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            try {
+                await loadUserProfile();
+                loadMentors();
+                loadMatchRequests();
+            } catch (error) {
+                console.error('초기화 실패:', error);
+                logout();
+            }
+        });
+
+        async function loadUserProfile() {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/users/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error('프로필 로드 실패');
+
+            currentUser = await response.json();
+            document.getElementById('user-name').textContent = currentUser.name;
+            document.getElementById('name').value = currentUser.name;
+            document.getElementById('bio').value = currentUser.bio;
+            document.getElementById('skillsets').value = currentUser.skillsets;
+
+            if (currentUser.profile_photo) {
+                const img = document.getElementById('profile-image');
+                img.src = currentUser.profile_photo;
+                img.style.display = 'block';
+            }
+
+            // 멘토인 경우 멘토 찾기 메뉴 숨김
+            if (currentUser.role === 'mentor') {
+                document.getElementById('mentors-nav').style.display = 'none';
+            }
+        }
+
+        function showSection(section) {
+            // 모든 섹션 숨김
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            // 선택된 섹션 표시
+            document.getElementById(section + '-section').classList.add('active');
+            event.target.classList.add('active');
+
+            if (section === 'mentors') {
+                loadMentors();
+            } else if (section === 'requests') {
+                loadMatchRequests();
+            }
+        }
+
+        async function updateProfile(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                name: formData.get('name'),
+                bio: formData.get('bio'),
+                skillsets: formData.get('skillsets')
+            };
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/users/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const messageDiv = document.getElementById('profile-message');
+                if (response.ok) {
+                    messageDiv.innerHTML = '<div style="color: green;">프로필이 성공적으로 업데이트되었습니다.</div>';
+                } else {
+                    messageDiv.innerHTML = '<div style="color: red;">프로필 업데이트에 실패했습니다.</div>';
+                }
+            } catch (error) {
+                document.getElementById('profile-message').innerHTML = '<div style="color: red;">서버 연결에 실패했습니다.</div>';
+            }
+        }
+
+        async function uploadPhoto() {
+            const fileInput = document.getElementById('profile-photo');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/users/upload-photo`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // 프로필 다시 로드
+                    loadUserProfile();
+                    document.getElementById('profile-message').innerHTML = '<div style="color: green;">사진이 성공적으로 업로드되었습니다.</div>';
+                } else {
+                    const error = await response.json();
+                    document.getElementById('profile-message').innerHTML = `<div style="color: red;">${error.detail}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('profile-message').innerHTML = '<div style="color: red;">사진 업로드에 실패했습니다.</div>';
+            }
+        }
+
+        async function loadMentors() {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/mentors`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const mentors = await response.json();
+                displayMentors(mentors);
+            }
+        }
+
+        async function searchMentors() {
+            const search = document.getElementById('search').value;
+            const token = localStorage.getItem('token');
+            const url = search ? `${API_BASE}/mentors/?search=${encodeURIComponent(search)}` : `${API_BASE}/mentors/`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const mentors = await response.json();
+                displayMentors(mentors);
+            }
+        }
+
+        function displayMentors(mentors) {
+            const container = document.getElementById('mentors-list');
+            container.innerHTML = '';
+
+            mentors.forEach(mentor => {
+                const mentorDiv = document.createElement('div');
+                mentorDiv.className = 'mentor';
+                mentorDiv.innerHTML = `
+                    <h4>${mentor.name}</h4>
+                    <p><strong>스킬셋:</strong> ${mentor.skillsets}</p>
+                    <p><strong>소개:</strong> ${mentor.bio}</p>
+                    ${currentUser && currentUser.role === 'mentee' ? 
+                        `<button onclick="openRequestModal(${mentor.id})">매칭 요청</button>` : 
+                        ''
+                    }
+                `;
+                container.appendChild(mentorDiv);
+            });
+        }
+
+        function openRequestModal(mentorId) {
+            document.getElementById('mentor-id').value = mentorId;
+            document.getElementById('request-modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('request-modal').style.display = 'none';
+            document.getElementById('message').value = '';
+        }
+
+        async function sendMatchRequest(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                mentor_id: parseInt(formData.get('mentor_id')),
+                message: formData.get('message')
+            };
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/matches`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('매칭 요청이 성공적으로 전송되었습니다.');
+                    closeModal();
+                    loadMatchRequests();
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || '매칭 요청 전송에 실패했습니다.');
+                }
+            } catch (error) {
+                alert('서버 연결에 실패했습니다.');
+            }
+        }
+
+        async function loadMatchRequests() {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/matches`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const requests = await response.json();
+                displayMatchRequests(requests);
+            }
+        }
+
+        function displayMatchRequests(requests) {
+            const container = document.getElementById('requests-list');
+            container.innerHTML = '';
+
+            if (requests.length === 0) {
+                container.innerHTML = '<p>매칭 요청이 없습니다.</p>';
+                return;
+            }
+
+            requests.forEach(request => {
+                const requestDiv = document.createElement('div');
+                requestDiv.className = `request-item status-${request.status}`;
+                
+                const isReceivedRequest = currentUser.role === 'mentor' && request.mentor_id === currentUser.id;
+                const otherUserName = isReceivedRequest ? request.mentee_name : request.mentor_name;
+                const requestType = isReceivedRequest ? '받은 요청' : '보낸 요청';
+
+                requestDiv.innerHTML = `
+                    <h4>${requestType}: ${otherUserName}</h4>
+                    <p><strong>메시지:</strong> ${request.message}</p>
+                    <p><strong>상태:</strong> <span id="request-status">${getStatusText(request.status)}</span></p>
+                    <p><strong>요청일:</strong> ${new Date(request.created_at).toLocaleDateString()}</p>
+                    ${isReceivedRequest && request.status === 'pending' ? 
+                        `<button id="accept" onclick="updateRequestStatus(${request.id}, 'accepted')">수락</button>
+                         <button id="reject" onclick="updateRequestStatus(${request.id}, 'rejected')">거절</button>` : 
+                        ''
+                    }
+                `;
+                container.appendChild(requestDiv);
+            });
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'pending': return '대기중';
+                case 'accepted': return '승인됨';
+                case 'rejected': return '거절됨';
+                default: return status;
+            }
+        }
+
+        async function updateRequestStatus(requestId, status) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/matches/${requestId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                if (response.ok) {
+                    loadMatchRequests();
+                } else {
+                    alert('요청 상태 업데이트에 실패했습니다.');
+                }
+            } catch (error) {
+                alert('서버 연결에 실패했습니다.');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

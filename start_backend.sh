@@ -51,10 +51,13 @@ BACKEND_PID=$!
 
 echo "백엔드 서버 시작됨 (PID: $BACKEND_PID)"
 
-# # 서버가 준비될 때까지 대기
+# 서버 시작을 위한 초기 대기
+sleep 3
+
+# 서버가 준비될 때까지 대기
 # echo "백엔드 서버 준비 대기 중..."
 # for i in {1..30}; do
-#     if curl -s http://localhost:8080/docs > /dev/null 2>&1; then
+#     if nc -z localhost 8080 2>/dev/null; then
 #         echo "✅ 백엔드 서버가 준비되었습니다 (http://localhost:8080)"
 #         exit 0
 #     fi

@@ -13,7 +13,7 @@ from app.schemas.match import (
 router = APIRouter()
 
 
-@router.post("/matches", response_model=MatchRequestResponse)
+@router.post("/match-requests", response_model=MatchRequestResponse)
 async def create_match_request(
     request_data: MatchRequestCreate,
     db: Session = Depends(get_db),
@@ -74,7 +74,10 @@ async def create_match_request(
     )
 
 
-@router.get("/matches", response_model=List[MatchRequestResponse])
+@router.get(
+    "/match-requests/incoming",
+    response_model=List[MatchRequestResponse]
+)
 async def get_match_requests(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -110,7 +113,10 @@ async def get_match_requests(
     return result
 
 
-@router.put("/matches/{request_id}", response_model=MatchRequestResponse)
+@router.put(
+    "/match-requests/{request_id}",
+    response_model=MatchRequestResponse
+)
 async def update_match_request(
     request_id: int,
     update_data: MatchRequestUpdate,
@@ -159,3 +165,118 @@ async def update_match_request(
         mentor_name=mentor.name if mentor else "",
         mentee_name=mentee.name if mentee else ""
     )
+
+
+# Add OpenAPI spec compatibility endpoints
+@router.put(
+    "/match-requests/{request_id}/accept",
+    response_model=MatchRequestResponse
+)
+async def accept_match_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Accept a match request"""
+    update_data = MatchRequestUpdate(status="accepted")
+    return await update_match_request(
+        request_id, update_data, db, current_user
+    )
+
+
+@router.put(
+    "/match-requests/{request_id}/reject",
+    response_model=MatchRequestResponse
+)
+async def reject_match_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Reject a match request"""
+    update_data = MatchRequestUpdate(status="rejected")
+    return await update_match_request(
+        request_id, update_data, db, current_user
+    )
+
+
+@router.get(
+    "/match-requests/{request_id}",
+    response_model=MatchRequestResponse
+)
+async def get_match_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get a specific match request"""
+    match_request = db.query(MatchRequest).filter(
+        MatchRequest.id == request_id
+    ).first()
+
+    if not match_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match request not found"
+        )
+
+    # Check permissions
+    if (current_user.id != match_request.mentor_id and
+            current_user.id != match_request.mentee_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this match request"
+        )
+
+    mentor = db.query(User).filter(User.id == match_request.mentor_id).first()
+    mentee = db.query(User).filter(User.id == match_request.mentee_id).first()
+
+    return MatchRequestResponse(
+        id=match_request.id,
+        mentor_id=match_request.mentor_id,
+        mentee_id=match_request.mentee_id,
+        message=match_request.message,
+        status=match_request.status.value,
+        created_at=match_request.created_at,
+        updated_at=match_request.updated_at,
+        mentor_name=mentor.name if mentor else "",
+        mentee_name=mentee.name if mentee else ""
+    )
+
+
+# Add outgoing requests endpoint
+@router.get(
+    "/match-requests/outgoing",
+    response_model=List[MatchRequestResponse]
+)
+async def get_outgoing_match_requests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get outgoing match requests for mentees"""
+    if current_user.role != UserRole.MENTEE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only mentees can view outgoing requests"
+        )
+
+    requests = db.query(MatchRequest).filter(
+        MatchRequest.mentee_id == current_user.id
+    ).all()
+
+    result = []
+    for req in requests:
+        mentor = db.query(User).filter(User.id == req.mentor_id).first()
+        result.append(MatchRequestResponse(
+            id=req.id,
+            mentor_id=req.mentor_id,
+            mentee_id=req.mentee_id,
+            message=req.message,
+            status=req.status.value,
+            created_at=req.created_at,
+            updated_at=req.updated_at,
+            mentor_name=mentor.name if mentor else "",
+            mentee_name=current_user.name
+        ))
+
+    return result

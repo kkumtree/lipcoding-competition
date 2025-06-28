@@ -81,3 +81,48 @@ async def upload_photo(
     db.commit()
 
     return {"message": "Photo uploaded successfully"}
+
+
+# Add compatibility aliases for OpenAPI spec
+@router.get("/me", response_model=UserResponse)
+async def get_profile_alias(current_user: User = Depends(get_current_user)):
+    """Alias for /users/profile to match OpenAPI spec"""
+    return await get_profile(current_user)
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_profile_alias(
+    profile_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Alias for /users/profile to match OpenAPI spec"""
+    return await update_profile(profile_data, db, current_user)
+
+
+# Add image endpoint for OpenAPI spec compatibility
+@router.get("/images/{role}/{user_id}")
+async def get_user_image(
+    role: str,
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get user profile image"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Return the profile image URL or default based on role
+    if user.profile_image and user.profile_image != "":
+        return {"image_url": user.profile_image}
+    else:
+        # Return default image based on role
+        default_image = (
+            "https://placehold.co/500x500.jpg?text=MENTOR"
+            if role.lower() == "mentor"
+            else "https://placehold.co/500x500.jpg?text=MENTEE"
+        )
+        return {"image_url": default_image}

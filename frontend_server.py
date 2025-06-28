@@ -15,13 +15,14 @@ class FrontendHandler(SimpleHTTPRequestHandler):
     
     def end_headers(self):
         # Add CORS headers for API calls to localhost:8080
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Origin',
+                         'http://localhost:8080')
         self.send_header(
-            'Access-Control-Allow-Methods', 
+            'Access-Control-Allow-Methods',
             'GET, POST, PUT, DELETE, OPTIONS'
         )
         self.send_header(
-            'Access-Control-Allow-Headers', 
+            'Access-Control-Allow-Headers',
             'Content-Type, Authorization'
         )
         super().end_headers()

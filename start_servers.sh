@@ -10,7 +10,7 @@ sleep 2
 echo "백엔드 서버를 시작합니다 (포트 8080)..."
 cd /Users/kkumtree/github/lipcoding-competition
 source .venv/bin/activate
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload > backend.log 2>&1 &
+nohup uvicorn app.main:app --host localhost --port 8080 --reload > backend.log 2>&1 &
 BACKEND_PID=$!
 
 # 프론트엔드 서버 시작 (백그라운드)

@@ -74,3 +74,22 @@ async def login(user_data: LoginRequest, db: Session = Depends(get_db)):
     access_token = create_access_token(data=token_data)
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# Add compatibility alias for tests
+@router.post("/signup", status_code=201)
+async def signup_alias(
+    user_data: SignupRequest,
+    db: Session = Depends(get_db)
+):
+    """Alias for /auth/signup to maintain test compatibility"""
+    return await signup(user_data, db)
+
+
+@router.post("/login")
+async def login_alias(
+    credentials: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    """Alias for /auth/login to maintain test compatibility"""
+    return await login(credentials, db)
